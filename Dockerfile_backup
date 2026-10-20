@@ -1,0 +1,19 @@
+# Build stage: use Maven image (includes JDK 8)
+FROM maven:3.8-jdk-8 AS builder
+WORKDIR /app/source
+COPY . .
+RUN mvn clean package
+
+FROM eclipse-temurin:8-jdk-alpine as builder
+RUN mkdir -p /app/source
+COPY . /app/source
+WORKDIR /app/source
+RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
+ENV MAVEN_OPTS="-Dhttps.protocols=TLSv1.2"
+RUN ./mvnw clean package
+
+
+FROM builder
+COPY --from=builder /app/source/target/*.jar /app/app.jar
+EXPOSE 8080
+ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom", "-jar", "/app/app.jar"]
